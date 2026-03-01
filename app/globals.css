@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --primary: 276.97 0.23 0.51; /* Dein Blau aus dem Screenshot */
+  --radius: 1rem; /* Dein Radius aus dem Screenshot */
+}
+
+body {
+  background-color: #09090b; /* Das satte Schwarz aus dem Bild */
+  color: white;
+  font-family: 'Geist', sans-serif; /* Die moderne Schrift */
+}
