@@ -147,6 +147,22 @@
   .empty { color: var(--muted); font-size: 14px; text-align: center; padding: 10px 0; }
   .badge { display:inline-block; background:#eef2f0; color:var(--muted); font-size:12px; font-weight:700; border-radius:20px; padding:3px 10px; }
   footer.foot { text-align: center; color: var(--muted); font-size: 12px; margin-top: 24px; }
+
+  /* Eigenes Bestätigungsfenster (statt window.confirm, das in manchen In-App-Browsern blockiert ist) */
+  .overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(15, 30, 22, .55);
+    display: flex; align-items: center; justify-content: center;
+    padding: 24px; z-index: 100;
+  }
+  .modal {
+    background: #fff; border-radius: 16px; padding: 20px;
+    width: 100%; max-width: 340px; box-shadow: 0 12px 40px rgba(0,0,0,.3);
+  }
+  .modal-msg { font-size: 15px; white-space: pre-line; margin-bottom: 18px; }
+  .modal-actions { display: flex; gap: 10px; }
+  .modal-actions > button { flex: 1; }
+  .btn-danger-solid { background: var(--danger); color: #fff; }
 </style>
 </head>
 <body>
@@ -313,6 +329,28 @@
       if (m.homeGoals != null && m.awayGoals != null) c++;
     });
     return c;
+  }
+
+  // Eigenes Bestätigungsfenster – funktioniert auch in In-App-Browsern (z. B. Documents),
+  // die window.confirm() unterdrücken.
+  function showConfirm(message, onYes, opts) {
+    opts = opts || {};
+    var overlay = document.createElement("div");
+    overlay.className = "overlay";
+    overlay.innerHTML =
+      '<div class="modal">' +
+        '<div class="modal-msg"></div>' +
+        '<div class="modal-actions">' +
+          '<button class="btn-secondary" data-act="no">' + esc(opts.cancelText || "Abbrechen") + '</button>' +
+          '<button class="' + (opts.danger ? "btn-danger-solid" : "btn-primary") + '" data-act="yes">' + esc(opts.okText || "OK") + '</button>' +
+        '</div>' +
+      '</div>';
+    overlay.querySelector(".modal-msg").textContent = message;
+    function close() { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }
+    overlay.addEventListener("click", function (e) { if (e.target === overlay) close(); });
+    overlay.querySelector('[data-act="no"]').addEventListener("click", close);
+    overlay.querySelector('[data-act="yes"]').addEventListener("click", function () { close(); onYes(); });
+    document.body.appendChild(overlay);
   }
 
   // ---------- Render ----------
@@ -563,16 +601,21 @@
 
   function finishTournament() {
     var missing = state.matches.length - playedCount();
-    if (missing > 0) {
-      var ok = window.confirm(
-        "Es " + (missing === 1 ? "ist" : "sind") + " noch " + missing + " Spiel" +
-        (missing === 1 ? "" : "e") + " ohne Ergebnis.\n\nTrotzdem beenden und Platzierungen berechnen?"
-      );
-      if (!ok) return;
+    function doFinish() {
+      state.phase = "finished";
+      saveState();
+      render();
     }
-    state.phase = "finished";
-    saveState();
-    render();
+    if (missing > 0) {
+      showConfirm(
+        "Es " + (missing === 1 ? "ist" : "sind") + " noch " + missing + " Spiel" +
+        (missing === 1 ? "" : "e") + " ohne Ergebnis.\n\nTrotzdem beenden und Platzierungen berechnen?",
+        doFinish,
+        { okText: "Beenden", cancelText: "Zurück" }
+      );
+    } else {
+      doFinish();
+    }
   }
 
   // ----- FINISHED -----
@@ -629,9 +672,11 @@
       render();
     });
     document.getElementById("newBtn").addEventListener("click", function () {
-      if (window.confirm("Neues Turnier starten? Das aktuelle Turnier wird komplett gelöscht.")) {
-        resetState();
-      }
+      showConfirm(
+        "Neues Turnier starten?\n\nDas aktuelle Turnier wird komplett gelöscht.",
+        resetState,
+        { okText: "Löschen & neu", cancelText: "Abbrechen", danger: true }
+      );
     });
   }
 
